@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRT TRADING ZONE v1.0</title>
+    <style>
+        :root {
+            --gold: #fbbf24;
+            --sky-blue: #7dd3fc;
+            --green: #22c55e;
+            --red: #ef4444;
+            --void-bg: #0a0a0f;
+            --panel-bg: rgba(20, 20, 30, 0.95);
+        }
+
+        body {
+            background-color: var(--void-bg);
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--panel-bg);
+            border: 1px solid #2d2d3d;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .banner {
+            border: 2px solid #3b82f6;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .banner h2 { color: var(--gold); margin: 0; font-size: 18px; }
+        .banner p { color: #94a3b8; font-size: 12px; margin: 5px 0; }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: var(--sky-blue);
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            background: #000;
+            border: 1px solid #334155;
+            color: #fff;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .btn-generate {
+            background: linear-gradient(to right, #1e40af, #3b82f6);
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+
+        .btn-generate:hover { opacity: 0.9; transform: scale(0.98); }
+
+        .btn-copy {
+            background: #1f2937;
+            color: var(--gold);
+            border: 1px solid var(--gold);
+            padding: 10px;
+            width: 100%;
+            border-radius: 6px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+            transition: 0.3s;
+        }
+
+        .btn-copy.success {
+            background: var(--green);
+            color: white;
+            border-color: var(--green);
+        }
+
+        #output {
+            margin-top: 20px;
+            background: #000;
+            border-left: 4px solid var(--green);
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            display: none;
+            color: #fff;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .asset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="banner">
+        <h2> IRT TRADING ZONE v1.0 </h2>
+        <p>Developer: @irtsupport1 | Provider: IRT TRADER</p>
+    </div>
+
+    <div class="status-bar">
+        <span>License: <span style="color:var(--green)">FREE</span></span>
+        <span id="api-status">API Status: <span style="color:var(--gold)">CHECKING...</span></span>
+    </div>
+
+    <div class="section-title">1. Select Market Type</div>
+    <select id="market-mode" onchange="updatePairPlaceholder()">
+        <option value="OTC">OTC MARKETS (Normal)</option>
+        <option value="REAL">REAL MARKETS (Forex)</option>
+        <option value="BLACKOUT">BLACKOUT SIGNALS (No Direction)</option>
+    </select>
+
+    <div class="section-title">2. Enter Pair(s)</div>
+    <input type="text" id="pairs-input" placeholder="e.g. TRUUSD-OTC,USDNGN-OTC or ALL">
+
+    <div class="section-title">3. Filter Direction</div>
+    <select id="action-choice">
+        <option value="3">BOTH (CALL & PUT)</option>
+        <option value="1">BUY (CALL) ONLY</option>
+        <option value="2">SELL (PUT) ONLY</option>
+    </select>
+
+    <div class="asset-grid">
+        <div>
+            <div class="section-title">Start Time</div>
+            <input type="time" id="start-t" value="00:00">
+        </div>
+        <div>
+            <div class="section-title">End Time</div>
+            <input type="time" id="end-t" value="23:59">
+        </div>
+    </div>
+
+    <button class="btn-generate" onclick="startGeneration()">GENERATE SIGNALS</button>
+    
+    <div id="output"></div>
+    <button id="copy-btn" class="btn-copy" onclick="copyToClipboard()"> COPY ALL SIGNALS</button>
+
+    <div class="footer">
+         Telegram: @irttradindzone |  Contact: @irtsupport1<br>
+        © 2026 IRT TRADERS - ALL RIGHTS RESERVED
+    </div>
+</div>
+
+<script>
+    const ASSETS = {
+        OTC: ["ADAUSD-OTC","APTUSD-OTC","ATOUSD-OTC","AVAUSD-OTC","AXSUSD-OTC","BCHUSD-OTC","BEAUSD-OTC","BNBUSD-OTC","BONUSD-OTC","BTCUSD-OTC","DASUSD-OTC","DOGUSD-OTC","DOTUSD-OTC","ETCUSD-OTC","ETHUSD-OTC","FLOUSD-OTC","GALUSD-OTC","HMSUSD-OTC","LINUSD-OTC","LTCUSD-OTC","MANUSD-OTC","MELUSD-OTC","PEPUSD-OTC","SHIUSD-OTC","SOLUSD-OTC","TIAUSD-OTC","TONUSD-OTC","TRUUSD-OTC","TRXUSD-OTC","WIFUSD-OTC","XRPUSD-OTC","ZECUSD-OTC","AUDCAD-OTC","AUDCHF-OTC","AUDJPY-OTC","AUDNZD-OTC","AUDUSD-OTC","CADCHF-OTC","CADJPY-OTC","CHFJPY-OTC","EURAUD-OTC","EURCAD-OTC","EURCHF-OTC","EURGBP-OTC","EURJPY-OTC","EURNZD-OTC","EURUSD-OTC","GBPAUD-OTC","GBPCAD-OTC","GBPCHF-OTC","GBPJPY-OTC","GBPNZD-OTC","GBPUSD-OTC","NZDCAD-OTC","NZDCHF-OTC","NZDJPY-OTC","NZDUSD-OTC","USDCAD-OTC","USDCHF-OTC","USDJPY-OTC","BRLUSD-OTC","USDARS-OTC","USDBDT-OTC","USDCOP-OTC","USDDZD-OTC","USDEGP-OTC","USDIDR-OTC","USDINR-OTC","USDMXN-OTC","USDNGN-OTC","USDPHP-OTC","USDPKR-OTC","USDTRY-OTC","USDZAR-OTC","XAGUSD-OTC","XAUUSD-OTC","UKBRENT-OTC","USCRUDE-OTC","JPXJPY","AXP-OTC","BA-OTC","FB-OTC","INTC-OTC","JNJ-OTC","MCD-OTC","MSFT-OTC","PFE-OTC"],
+        REAL: ["AUDCAD","AUDCHF","AUDJPY","AUDUSD","CADJPY","CHFJPY","EURAUD","EURCAD","EURCHF","EURGBP","EURJPY","EURUSD","GBPAUD","GBPCAD","GBPCHF","GBPJPY","GBPUSD","USDCAD","USDCHF","USDJPY"]
+    };
+
+    const API_CONFIG = {
+        "OTC": "https://quotexotc-futureapi.poghen-dx.workers.dev/pairs={pairs}?start_time={start_time}&end_time={end_time}",
+        "REAL": "https://realmarket-futuresignalapi.poghen-dx.workers.dev/pairs={pairs}?start_time={start_time}&end_time={end_time}&min_percentage=95&separate=1&days=3",
+        "BLACKOUT": "https://blackoutsignal-qxapi.poghen-dx.workers.dev/pairs={pairs}?start_time={start_time}&end_time={end_time}"
+    };
+
+    function updatePairPlaceholder() {
+        const mode = document.getElementById('market-mode').value;
+        const input = document.getElementById('pairs-input');
+        input.placeholder = mode === "REAL" ? "e.g. EURUSD,GBPUSD or ALL" : "e.g. TRUUSD-OTC,USDBRL-OTC or ALL";
+    }
+
+    async function checkApi() {
+        document.getElementById('api-status').innerHTML = `API Status: <span style="color:var(--green)"> CONNECTED</span>`;
+    }
+
+    function parseRealSignal(sigStr) {
+        try {
+            const parts = sigStr.includes("—") ? sigStr.split("—") : sigStr.split("-");
+            if (parts.length < 2) return null;
+            const left = parts[0].trim().split(" ");
+            const right = parts[1].trim().toLowerCase();
+            return {
+                asset: left[0],
+                time: left[1],
+                direction: right.includes("call") || right.includes("buy") ? "CALL" : "PUT"
+            };
+        } catch(e) { return null; }
+    }
+
+    async function startGeneration() {
+        const mode = document.getElementById('market-mode').value;
+        let rawInput = document.getElementById('pairs-input').value.toUpperCase().trim();
+        const startT = document.getElementById('start-t').value;
+        const endT = document.getElementById('end-t').value;
+        const action = document.getElementById('action-choice').value;
+        const outputDiv = document.getElementById('output');
+        const copyBtn = document.getElementById('copy-btn');
+
+        if(!rawInput) return alert("Please enter at least one pair or ALL");
+
+        outputDiv.style.display = 'block';
+        copyBtn.style.display = 'none';
+        outputDiv.innerText = ` GENERATING M1 SIGNALS FOR ${mode}...`;
+
+        let selectedPairs = (rawInput === "ALL") 
+            ? (mode === "REAL" ? ASSETS.REAL : ASSETS.OTC) 
+            : rawInput.split(',').map(p => p.trim());
+
+        let apiPairs = selectedPairs.map(p => {
+            return (mode !== "REAL") ? p.replace("-OTC", "_otc") : p;
+        }).join(',');
+
+        const url = API_CONFIG[mode]
+            .replace("{pairs}", apiPairs)
+            .replace("{start_time}", startT)
+            .replace("{end_time}", endT);
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if(data.status === "success" || data.signals) {
+                let signals = data.signals || [];
+                let filtered = [];
+
+                signals.forEach(sig => {
+                    let parsed;
+                    if(mode === "REAL") parsed = parseRealSignal(sig);
+                    else if(mode === "BLACKOUT") parsed = { asset: sig.asset, time: sig.time, direction: "NONE" };
+                    else parsed = { asset: sig.asset, time: sig.time, direction: (sig.direction || "").toUpperCase() };
+
+                    if(parsed && parsed.asset) {
+                        if(action === "1" && parsed.direction === "PUT") return;
+                        if(action === "2" && parsed.direction === "CALL") return;
+                        filtered.push(parsed);
+                    }
+                });
+
+                displayResults(filtered, mode);
+            } else {
+                outputDiv.innerText = " No signals found for current filters.";
+            }
+        } catch (e) {
+            outputDiv.innerText = " Connection Failed. Check your Internet connection.";
+        }
+    }
+
+    function displayResults(signals, mode) {
+        const outputDiv = document.getElementById('output');
+        const copyBtn = document.getElementById('copy-btn');
+
+        if(signals.length === 0) {
+            outputDiv.innerText = " No signals match your criteria.";
+            return;
+        }
+
+        let res = `\n`;
+        res += `    IRT TRADING ZONE VIP \n`;
+        res += `\n\n`;
+        
+        let calls = 0, puts = 0;
+        signals.forEach(s => {
+            const cleanAsset = s.asset.replace("_otc", "-OTC");
+            const dirLabel = s.direction === "NONE" ? "WAIT" : s.direction;
+            
+            // Apply Requested Format: M1;ASSET;TIME;DIRECTION
+            res += `M1;${cleanAsset};${s.time};${dirLabel}\n`;
+            
+            if(s.direction === "CALL") calls++;
+            if(s.direction === "PUT") puts++;
+        });
+
+        res += `\n\n`;
+        res += ` Total: ${signals.length} |  CALL: ${calls} |  PUT: ${puts}\n`;
+
+        outputDiv.innerText = res;
+        copyBtn.style.display = 'block';
+        copyBtn.innerText = " COPY ALL SIGNALS";
+        copyBtn.classList.remove('success');
+    }
+
+    function copyToClipboard() {
+        const text = document.getElementById('output').innerText;
+        const btn = document.getElementById('copy-btn');
+        navigator.clipboard.writeText(text).then(() => {
+            btn.innerText = " COPIED TO CLIPBOARD!";
+            btn.classList.add('success');
+            setTimeout(() => {
+                btn.innerText = " COPY ALL SIGNALS";
+                btn.classList.remove('success');
+            }, 2000);
+        });
+    }
+
+    checkApi();
+</script>
+
+</body>
+</html>
